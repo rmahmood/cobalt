@@ -62,6 +62,12 @@ class VmsApi(object):
             mem_url=mem_url,
             migration=migration)
 
+    def image(self, instance_name, new_instance_name, **kwargs):
+
+        return tpool.execute(commands.image,
+                             instance_name,
+                             new_instance_name)
+
     def create_vmsargs(self, guest_params):
         vms_args = None
         if guest_params != None:

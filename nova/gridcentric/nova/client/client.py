@@ -44,6 +44,11 @@ class NovaClient(httplib2.Http):
                                                 'POST', body={'gc_bless':{}})
         return body
 
+    def image_instance(self, instance_id):
+        resp, body = self.authenticated_request('/servers/%s/action' % instance_id,
+                                                'POST', body={'gc_image':{}})
+        return body
+
     def launch_instance(self, blessed_instance_id, params={}):
         resp, body = self.authenticated_request('/servers/%s/action' % blessed_instance_id,
                                                 'POST', body={'gc_launch':params})

@@ -195,7 +195,7 @@ class API(base.Base):
                 hosts.append(srv['host'])
         return hosts
 
-    def bless_instance(self, context, instance_uuid):
+    def _save_instance(self, context, instance_uuid, save_type):
         # Setup the DB representation for the new VM.
         instance = self.get(context, instance_uuid)
 
@@ -204,15 +204,15 @@ class API(base.Base):
         if is_blessed:
             # The instance is already blessed. We can't rebless it.
             raise exception.NovaException(_(("Instance %s is already blessed. " +
-                                     "Cannot rebless an instance.") % instance_uuid))
+                                             "Cannot rebless an instance.") % instance_uuid))
         elif is_launched:
             # The instance is a launched one. We cannot bless launched instances.
             raise exception.NovaException(_(("Instance %s has been launched. " +
-                                     "Cannot bless a launched instance.") % instance_uuid))
-        elif instance['vm_state'] != vm_states.ACTIVE:
+                                             "Cannot bless a launched instance.") % instance_uuid))
+        elif save_type == 'bless_instance' and instance['vm_state'] != vm_states.ACTIVE:
             # The instance is not active. We cannot bless a non-active instance.
             raise exception.NovaException(_(("Instance %s is not active. " +
-                                      "Cannot bless a non-active instance.") % instance_uuid))
+                                             "Cannot bless a non-active instance.") % instance_uuid))
 
         reservations = self._acquire_addition_reservation(context, instance)
         try:
@@ -220,9 +220,9 @@ class API(base.Base):
             new_instance = self._copy_instance(context, instance_uuid,
                                                "%s-%s" % (instance['display_name'], str(clonenum)), launch=False)
 
-            LOG.debug(_("Casting gridcentric message for bless_instance") % locals())
-            self._cast_gridcentric_message('bless_instance', context, new_instance['uuid'],
-                                       host=instance['host'])
+            LOG.debug(_("Casting gridcentric message for %s" % save_type) % locals())
+            self._cast_gridcentric_message(save_type, context, new_instance['uuid'],
+                                           host=instance['host'])
             self._commit_reservation(context, reservations)
         except:
             self._rollback_reservation(context, reservations)
@@ -231,6 +231,12 @@ class API(base.Base):
         # We reload the instance because the manager may have change its state (most likely it
         # did).
         return self.get(context, new_instance['uuid'])
+
+    def bless_instance(self, context, instance_uuid):
+        self._save_instance(context, instance_uuid, 'bless_instance')
+
+    def image_instance(self, context, instance_uuid):
+        self._save_instance(context, instance_uuid, 'image_instance')
 
     def discard_instance(self, context, instance_uuid):
         LOG.debug(_("Casting gridcentric message for discard_instance") % locals())

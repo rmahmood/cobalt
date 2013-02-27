@@ -110,6 +110,20 @@ class VmsConnection:
 
         return (newname, network, blessed_files)
 
+    @_log_call
+    def image(self, context, instance_name, new_instance_ref):
+        """
+        Create a new blesed VM from a shutoff instance with name
+        instance_name. Similar to bless(), the blessed instnace will have the
+        name new_instance_ref['name'].
+        """
+        new_instance_name = new_instance_ref['name']
+        (newname, network, blessed_files) = self.vmsapi.image(instance_name, new_instance_name)
+
+        self._chmod_blessed_files(blessed_files)
+
+        return (newname, network, blessed_files)
+
     def _chmod_blessed_files(self, blessed_files):
         """ Change the permission on the blessed files """
         pass

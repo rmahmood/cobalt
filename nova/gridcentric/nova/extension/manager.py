@@ -327,7 +327,7 @@ class GridCentricManager(manager.SchedulerDependentManager):
         return image_refs
 
     def _get_source_instance(self, context, instance_uuid):
-        """ 
+        """
         Returns a the instance reference for the source instance of instance_id. In other words:
         if instance_id is a BLESSED instance, it returns the instance that was blessed
         if instance_id is a LAUNCH instance, it returns the blessed instance.
@@ -364,13 +364,13 @@ class GridCentricManager(manager.SchedulerDependentManager):
 
     @_lock_call
     def bless_instance(self, context, instance_uuid=None, instance_ref=None,
-                       migration_url=None, migration_network_info=None):
+                       migration_url=None, migration_network_info=None, imaging=False):
         """
         Construct the blessed instance, with the uuid instance_uuid. If migration_url is specified then
         bless will ensure a memory server is available at the given migration url.
         """
 
-        if migration_url:
+        if migration_url and not imaging:
             # Tweak only this instance directly.
             source_instance_ref = instance_ref
             migration = True
@@ -385,10 +385,15 @@ class GridCentricManager(manager.SchedulerDependentManager):
             # NOTE: If this is a migration, then a successful bless will mean that
             # the VM no longer exists. This requires us to *relaunch* it below in
             # the case of a rollback later on.
-            name, migration_url, blessed_files = self.vms_conn.bless(context,
-                                                source_instance_ref['name'],
-                                                instance_ref,
-                                                migration_url=migration_url)
+            if imaging:
+                name, migration_url, blessed_files = self.vms_conn.image(context,
+                                                                         source_instance_ref['name'],
+                                                                         instance_ref)
+            else:
+                name, migration_url, blessed_files = self.vms_conn.bless(context,
+                                                                         source_instance_ref['name'],
+                                                                         instance_ref,
+                                                                         migration_url=migration_url)
         except Exception, e:
             _log_error("bless")
 
@@ -449,6 +454,10 @@ class GridCentricManager(manager.SchedulerDependentManager):
 
         # Return the memory URL (will be None for a normal bless).
         return migration_url
+
+    @_lock_call
+    def image_instance(self, context, instance_uuid=None, instance_ref=None):
+        self.bless_instance(context, instance_uuid, instance_ref, imaging=True)
 
     @_lock_call
     def migrate_instance(self, context, instance_uuid=None, instance_ref=None, dest=None):

@@ -54,6 +54,12 @@ class VmsApi(object):
         # Return the base module
         return config
 
+    def prepare(self, instance_name):
+        return tpool.execute(commands.prepare, instance_name)
+
+    def initpoll(self, instance_name):
+        raise NotImplementedError("initpoll() available in vms 2.7 and later")
+
     def bless(self, instance_name, new_instance_name, mem_url=None, migration=False, **kwargs):
 
         return tpool.execute(commands.bless,
@@ -61,6 +67,9 @@ class VmsApi(object):
             new_instance_name,
             mem_url=mem_url,
             migration=migration)
+
+    def finalize(self, instance_name):
+        return tpool.execute(commands.finalize, instance_name)
 
     def create_vmsargs(self, guest_params, vms_options):
         return vmsrun.Arguments(params=guest_params, options=vms_options)
@@ -92,8 +101,10 @@ class VmsApi(object):
 
 class VmsApi26(VmsApi):
 
-    def __init__(self):
-        super(VmsApi26, self).__init__(version='2.6')
+    def __init__(self, version=None):
+        if version is None:
+            version = '2.6'
+        super(VmsApi26, self).__init__(version=version)
 
     def config(self):
 
@@ -114,6 +125,15 @@ class VmsApi26(VmsApi):
             migration=migration,
             vmsargs=vms_args)
 
+class VmsApi27(VmsApi26):
+
+    def __init__(self, version=None):
+        if version is None:
+            version = '2.7'
+        super(VmsApi27, self).__init__(version=version)
+
+    def initpoll(self, instance_name):
+        return tpool.execute(commands.initpoll, instance_name, expected_count=None)
 
 def get_vmsapi(version=None):
     if version == None:
@@ -129,5 +149,3 @@ def get_vmsapi(version=None):
         raise exception.NovaException(_("Unsupported version of vms %s") %(version))
 
     return vmsapi
-
-

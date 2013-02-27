@@ -98,6 +98,27 @@ class VmsConnection:
         pass
 
     @_log_call
+    def prepare(self, context, instance_name):
+        """
+        Prepare a VM for blessing. This is only necessary when using the 'image' variant of bless.
+        """
+        return self.vmsapi.prepare(instance_name)
+
+    @_log_call
+    def initpoll(self, context, instance_name):
+        """
+        Wait for a VM to finish performing any in-guest initialization needed for blessing.
+        """
+        return self.vmsapi.initpoll(instance_name)
+
+    @_log_call
+    def finalize(self, context, instance_name):
+        """
+        Perform any finalization tasks on the blessed instance produced by an image command.
+        """
+        return self.vmsapi.finalize(instance_name)
+
+    @_log_call
     def bless(self, context, instance_name, new_instance_ref, migration_url=None):
         """
         Create a new blessed VM from the instance with name instance_name and gives the blessed

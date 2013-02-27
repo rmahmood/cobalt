@@ -343,7 +343,7 @@ class GridCentricManager(manager.SchedulerDependentManager):
         return image_refs
 
     def _get_source_instance(self, context, instance_uuid):
-        """ 
+        """
         Returns a the instance reference for the source instance of instance_id. In other words:
         if instance_id is a BLESSED instance, it returns the instance that was blessed
         if instance_id is a LAUNCH instance, it returns the blessed instance.
@@ -464,6 +464,32 @@ class GridCentricManager(manager.SchedulerDependentManager):
 
         # Return the memory URL (will be None for a normal bless).
         return migration_url
+
+    @_lock_call
+    def image_instance(self, context, instance_uuid=None, instance_ref=None):
+        # The VM is assumed to be in a powered-off state. If the VM is not
+        # powered-off, we will shut it down first. Note that stop_instance()
+        # attempts a soft shutdown first.
+        source_instance_ref = self._get_source_instance(context, instance_uuid)
+        if self.compute_manager._get_power_state(context, source_instance_ref) != power_state.SHUTDOWN:
+            self._instance_update(context, source_instance_ref['uuid'], task_state=task_states.POWERING_OFF)
+            self.compute_manager.stop_instance(context, instance=source_instance_ref)
+
+        # Perform any preparation for blessing on the source instance.
+        self.vms_conn.prepare(context, source_instance_ref['name'])
+
+        # Boot the instance.
+        self._instance_update(context, source_instance_ref['uuid'], task_state=task_states.POWERING_ON)
+        self.compute_manager.start_instance(context, instance=source_instance_ref)
+
+        # Wait for the instance initialization.
+        self.vms_conn.initpoll(context, source_instance_ref['name'])
+
+        # Bless the instance.
+        self.bless_instance(context, instance_uuid=instance_uuid, instance_ref=instance_ref)
+
+        # Perform any finalization tasks on the blessed instance.
+        self.vms_conn.finalize(context, instance_ref['name'])
 
     @_lock_call
     def migrate_instance(self, context, instance_uuid=None, instance_ref=None, dest=None):

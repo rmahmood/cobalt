@@ -96,6 +96,15 @@ class GridcentricServerControllerExtension(wsgi.Controller):
         result = self.gridcentric_api.bless_instance(context, id, params=params)
         return self._build_instance_list(req, [result])
 
+    @wsgi.action('gc_image')
+    @convert_exception
+    @authorize
+    def _image_instance(self, req, id, body):
+        context = req.environ["nova.context"]
+        params = body.get('gc_image', {})
+        result = self.gridcentric_api.image_instance(context, id, params=params)
+        return self._build_instance_list(req, [result])
+
     @wsgi.action('gc_discard')
     @convert_exception
     @authorize
@@ -204,15 +213,15 @@ class GridcentricTargetBootController(object):
         return self.nova_servers.create(req, body)
 
 class Gridcentric_extension(object):
-    """ 
+    """
     The OpenStack Extension definition for the Gridcentric capabilities. Currently this includes:
-        
+
         * Bless an existing virtual machine (creates a new server snapshot
           of the virtual machine and enables the user to launch new copies
           nearly instantaneously).
-        
+
         * Launch new virtual machines from a blessed copy above.
-        
+
         * Discard blessed VMs.
 
         * List launched VMs (per blessed VM).

@@ -37,7 +37,8 @@ CAPABILITIES = {'user-data': ['user-data'],
                 'security-groups': ['security-groups'],
                 'num-instances': ['num-instances'],
                 'availability-zone': ['availability-zone'],
-                'bless-name': ['bless-name']
+                'bless-name': ['bless-name'],
+                'bless-image': ['bless-image']
                 }
 
 def __pre_parse_args__():
@@ -137,10 +138,17 @@ def do_launch(cs, args):
 
 @utils.arg('server', metavar='<instance>', help="ID or name of the instance to bless")
 @utils.arg('--name', metavar='<name>', default=None, help="The name of the new blessed instance")
+@utils.arg('--image', dest='image', action='store_true', default=False,
+           help='Perform a special bless with the additional synchronization required for a Windows instance')
 def do_bless(cs, args):
     """Bless an instance."""
     server = _find_server(cs, args.server)
-    blessed_servers = cs.gridcentric.bless(server, args.name)
+
+    if args.image:
+        blessed_servers = cs.gridcentric.image(server, args.name)
+    else:
+        blessed_servers = cs.gridcentric.bless(server, args.name)
+
     for server in blessed_servers:
         _print_server(cs, server)
 
@@ -322,6 +330,9 @@ class GcServer(servers.Server):
     def bless(self, name=None):
         return self.manager.bless(self, name)
 
+    def image(self, name=None):
+        return self.manager.image(self, name)
+
     def discard(self):
         self.manager.discard(self)
 
@@ -394,6 +405,11 @@ class GcServerManager(servers.ServerManager):
     def bless(self, server, name=None):
         params = {'name': name}
         header, info = self._action("gc_bless", base.getid(server), params)
+        return [self.get(server['id']) for server in info]
+
+    def image(self, server, name=None):
+        params = {'name': name}
+        header, info = self._action("gc_image", base.getid(server), params)
         return [self.get(server['id']) for server in info]
 
     def discard(self, server):
